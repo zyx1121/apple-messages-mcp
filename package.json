@@ -1,6 +1,6 @@
 {
   "name": "@zyx1121/apple-messages-mcp",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "MCP server for Apple Messages — send and read iMessages via Claude Code",
   "type": "module",
   "main": "./dist/index.js",
