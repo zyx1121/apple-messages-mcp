@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { runAppleScript, runSqlite, escapeForAppleScript, success, withErrorHandling } from "../helpers.js";
+import { runAppleScript, runSqlite, escapeForAppleScript, success, error, withErrorHandling } from "../helpers.js";
 
 const DB_PATH = `${process.env.HOME}/Library/Messages/chat.db`;
 
@@ -102,6 +102,46 @@ LIMIT ${limit};`;
       const raw = await runSqlite(DB_PATH, sql);
       const messages = raw ? JSON.parse(raw) : [];
       return success(messages);
+    }),
+  );
+
+  server.tool(
+    "messages_delete",
+    "Delete a specific chat/conversation by selecting it and using keyboard shortcut",
+    {
+      chat_id: z.string().optional().describe("Chat ROWID from messages_list_chats"),
+      contact: z.string().optional().describe("Phone number, email, or chat_identifier to match"),
+    },
+    withErrorHandling(async ({ chat_id, contact }) => {
+      if (!chat_id && !contact) throw new Error("Provide either chat_id or contact");
+
+      let identifier: string;
+      if (chat_id) {
+        const raw = await runSqlite(DB_PATH, `SELECT chat_identifier FROM chat WHERE ROWID = ${parseInt(chat_id, 10)};`);
+        const rows = raw ? JSON.parse(raw) : [];
+        if (rows.length === 0) return error("Chat not found");
+        identifier = rows[0].chat_identifier;
+      } else {
+        identifier = contact!;
+      }
+
+      // Verify chat exists
+      const escaped = identifier.replace(/'/g, "''");
+      const check = await runSqlite(DB_PATH, `SELECT ROWID, chat_identifier, display_name FROM chat WHERE chat_identifier = '${escaped}' OR ROWID = ${parseInt(chat_id || "0", 10)};`);
+      const rows = check ? JSON.parse(check) : [];
+      if (rows.length === 0) return error("Chat not found");
+
+      const rowId = rows[0].ROWID;
+
+      // Quit Messages, delete from db, reopen
+      await runAppleScript('tell application "Messages" to quit');
+      await new Promise((r) => setTimeout(r, 1000));
+      await runSqlite(DB_PATH, `DELETE FROM chat_message_join WHERE chat_id = ${rowId};`);
+      await runSqlite(DB_PATH, `DELETE FROM message WHERE ROWID NOT IN (SELECT message_id FROM chat_message_join);`);
+      await runSqlite(DB_PATH, `DELETE FROM chat WHERE ROWID = ${rowId};`);
+      await runAppleScript('tell application "Messages" to activate');
+
+      return success({ deleted: rows[0].chat_identifier, display_name: rows[0].display_name || null });
     }),
   );
 }

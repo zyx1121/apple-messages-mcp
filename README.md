@@ -39,6 +39,7 @@ claude mcp add apple-messages -- npx @zyx1121/apple-messages-mcp
 | `messages_list_chats` | List recent chats/conversations |
 | `messages_read` | Read recent messages from a specific chat or contact |
 | `messages_search` | Search messages by keyword |
+| `messages_delete` | Delete a specific chat/conversation |
 
 ## Examples
 
@@ -47,13 +48,15 @@ claude mcp add apple-messages -- npx @zyx1121/apple-messages-mcp
 "Show my recent chats" → messages_list_chats {}
 "Read messages from John" → messages_read { contact: "john@example.com" }
 "Search for 'meeting'" → messages_search { query: "meeting" }
+"Delete chat with +886912345678" → messages_delete { contact: "+886912345678" }
 ```
 
 ## Limitations
 
 - macOS only (uses AppleScript via `osascript` and `sqlite3`)
 - Sending uses AppleScript — Messages.app must be running
-- Reading uses `~/Library/Messages/chat.db` — requires Full Disk Access
+- Reading/deleting uses `~/Library/Messages/chat.db` — requires Full Disk Access
+- Deleting quits Messages.app temporarily to safely modify the database
 
 ## License
 
