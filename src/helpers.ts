@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 
-const TIMEOUT_MS = 15_000;
+const TIMEOUT_MS = 30_000;
 
 export class AppleMessagesError extends Error {
   constructor(message: string) {

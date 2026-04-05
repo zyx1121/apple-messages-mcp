@@ -59,8 +59,8 @@ LIMIT ${limit};`;
       if (chat_id) {
         chatFilter = `cmj.chat_id = ${parseInt(chat_id, 10)}`;
       } else {
-        const escaped = contact!.replace(/'/g, "''");
-        chatFilter = `cmj.chat_id IN (SELECT ROWID FROM chat WHERE chat_identifier LIKE '%${escaped}%')`;
+        const escaped = contact!.replace(/'/g, "''").replace(/%/g, "\\%").replace(/_/g, "\\_");
+        chatFilter = `cmj.chat_id IN (SELECT ROWID FROM chat WHERE chat_identifier LIKE '%${escaped}%' ESCAPE '\\')`;
       }
 
       const query = `
@@ -87,7 +87,7 @@ LIMIT ${limit};`;
       limit: z.number().optional().default(20).describe("Max number of results to return"),
     },
     withErrorHandling(async ({ query: keyword, limit }) => {
-      const escaped = keyword.replace(/'/g, "''");
+      const escaped = keyword.replace(/'/g, "''").replace(/%/g, "\\%").replace(/_/g, "\\_");
       const sql = `
 SELECT m.text, m.is_from_me,
   datetime(m.date/1000000000 + 978307200, 'unixepoch', 'localtime') as date,
@@ -96,7 +96,7 @@ FROM message m
 LEFT JOIN handle h ON m.handle_id = h.ROWID
 JOIN chat_message_join cmj ON m.ROWID = cmj.message_id
 JOIN chat c ON cmj.chat_id = c.ROWID
-WHERE m.text LIKE '%${escaped}%'
+WHERE m.text LIKE '%${escaped}%' ESCAPE '\\'
 ORDER BY m.date DESC
 LIMIT ${limit};`;
       const raw = await runSqlite(DB_PATH, sql);
